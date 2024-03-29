@@ -18,24 +18,19 @@ public class DefaultTaskExecutor implements TaskExecutor {
 
     private final HashedWheelTimer timer;
     private final ThreadPoolExecutor threadPoolExecutor;
-    private final TaskExecutorPoolSizeAdjuster poolSizeAdjuster;
+    private final ThreadPoolExecutorAdjuster adjuster;
 
-    public DefaultTaskExecutor(ThreadPoolExecutor threadPoolExecutor, TaskExecutorPoolSizeAdjuster poolSizeAdjuster) {
+    public DefaultTaskExecutor(ThreadPoolExecutor threadPoolExecutor, ThreadPoolExecutorAdjuster adjuster) {
         assert threadPoolExecutor != null;
         this.timer = new HashedWheelTimer(new DefaultThreadFactory("TaskExecutor-Timer"), 10, TimeUnit.MILLISECONDS, 100, true, -1, threadPoolExecutor);
         this.threadPoolExecutor = threadPoolExecutor;
-        this.poolSizeAdjuster = poolSizeAdjuster;
+        this.adjuster = adjuster;
         init();
     }
 
     private void init() {
-        if (poolSizeAdjuster != null) {
-            submit(new RepeatTask(() -> {
-                int maxPoolSize = poolSizeAdjuster.calctMaximumPoolSize();
-                threadPoolExecutor.setMaximumPoolSize(maxPoolSize);
-                int corePoolSize = poolSizeAdjuster.calcCorePoolSize();
-                threadPoolExecutor.setCorePoolSize(corePoolSize);
-            }, 10, TimeUnit.SECONDS));
+        if (adjuster != null) {
+            submit(new RepeatTask(() -> adjuster.customize(threadPoolExecutor), 10, TimeUnit.SECONDS));
         }
     }
 

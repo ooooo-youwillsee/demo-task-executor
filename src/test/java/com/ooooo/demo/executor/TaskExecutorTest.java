@@ -48,28 +48,20 @@ class TaskExecutorTest {
 
     @Test
     void poolSizeAdjuster() {
-        TaskExecutorPoolSizeAdjuster poolSizeAdjuster = new TaskExecutorPoolSizeAdjuster() {
+        ThreadPoolExecutorAdjuster adjuster = new ThreadPoolExecutorAdjuster() {
 
             private Date preDate = new Date();
 
             @Override
-            public int calcCorePoolSize() {
+            public void customize(ThreadPoolExecutor threadPoolExecutor) {
                 // 已经过去3秒了
                 if (DateUtil.offsetSecond(preDate, 3).isBefore(new Date())) {
-                    return 5;
+                    threadPoolExecutor.setMaximumPoolSize(10);
+                    threadPoolExecutor.setCorePoolSize(5);
                 }
-                return 2;
-            }
-
-            @Override
-            public int calctMaximumPoolSize() {
-                if (DateUtil.offsetSecond(preDate, 3).isBefore(new Date())) {
-                    return 10;
-                }
-                return 2;
             }
         };
-        taskExecutor = new DefaultTaskExecutor(threadPoolExecutor, poolSizeAdjuster);
+        taskExecutor = new DefaultTaskExecutor(threadPoolExecutor, adjuster);
         for (int i = 0; i < 5; i++) {
             int no = i;
             taskExecutor.submit(new RepeatTask(() -> {
