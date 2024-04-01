@@ -32,6 +32,15 @@ public class DefaultTaskExecutor implements TaskExecutor {
         if (adjuster != null) {
             submit(new RepeatTask(() -> adjuster.customize(threadPoolExecutor), 10, TimeUnit.SECONDS));
         }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            for (Timeout timeout : timer.stop()) {
+                TimerTask task = timeout.task();
+                if (task instanceof TimerTaskWrapper ) {
+                    TimerTaskWrapper taskWrapper = (TimerTaskWrapper) task;
+                    threadPoolExecutor.submit(taskWrapper.runnable);
+                }
+            }
+        }));
     }
 
     @Override
@@ -48,7 +57,7 @@ public class DefaultTaskExecutor implements TaskExecutor {
 
     private class TimerTaskWrapper implements TimerTask {
 
-        private Runnable runnable;
+        private final Runnable runnable;
 
         public TimerTaskWrapper(Runnable runnable) {
             this.runnable = runnable;
